@@ -15,6 +15,7 @@ import {
 import { AlertCircle, Loader2, Pencil, Save } from "lucide-react";
 import { useCmsConfig, type CmsField } from "@/hooks/useCmsConfig";
 import { getAccessToken } from "@/lib/tokens";
+import { swalSuccess, swalError } from "@/lib/swal";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -151,10 +152,13 @@ export default function ContactPage() {
         throw new Error(err.detail ?? `Save failed (HTTP ${res.status})`);
       }
 
+      swalSuccess("Updated!", "Contact details saved successfully.");
       setEditOpen(false);
       loadContact();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Save failed");
+      const msg = err instanceof Error ? err.message : "Save failed";
+      setSaveError(msg);
+      swalError("Save Failed", msg);
     } finally {
       setSaving(false);
     }

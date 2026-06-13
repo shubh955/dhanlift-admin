@@ -21,19 +21,19 @@ import { swalSuccess, swalError } from "@/lib/swal";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-interface Blog {
+interface Product {
   id: number;
-  title: string;
-  category?: string;
-  published_at?: string;
-  excerpt?: string;
+  name: string;
+  category_name?: string;
+  lender_name?: string;
   is_active: boolean;
+  created_at?: string;
   [key: string]: unknown;
 }
 
-export default function BlogPage() {
+export function ProductList() {
   const router = useRouter();
-  const [data, setData] = useState<Blog[]>([]);
+  const [data, setData] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -48,13 +48,13 @@ export default function BlogPage() {
     setIsLoading(true);
     setFetchError(null);
     const token = getAccessToken();
-    fetch(`${API}/v1/admin/blogs?page=${page}&limit=${limit}`, {
+    fetch(`${API}/v1/admin/products?page=${page}&limit=${limit}`, {
       headers: { accept: "application/json", Authorization: `Bearer ${token}` },
       signal: controller.signal,
     })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((json) => { setData(json.data ?? []); setTotal(json.meta?.total ?? 0); })
-      .catch((err) => { if (err.name === "AbortError") return; setFetchError(err instanceof Error ? err.message : "Failed to load blogs"); })
+      .then((json) => { const rows = json.data ?? json.items ?? (Array.isArray(json) ? json : []); setData(rows); setTotal(json.meta?.total ?? json.total ?? rows.length); })
+      .catch((err) => { if (err.name === "AbortError") return; setFetchError(err instanceof Error ? err.message : "Failed to load products"); })
       .finally(() => setIsLoading(false));
     return () => controller.abort();
   }, [page, refreshKey]);
@@ -64,25 +64,22 @@ export default function BlogPage() {
     setDeleting(true);
     try {
       const token = getAccessToken();
-      const res = await fetch(`${API}/v1/admin/blogs/${deleteTarget}`, {
+      const res = await fetch(`${API}/v1/admin/products/${deleteTarget}`, {
         method: "DELETE",
-        headers: {
-          accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { accept: "application/json", Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Delete failed");
       setDeleteTarget(null);
       setRefreshKey((k) => k + 1);
-      swalSuccess("Deleted!", "Blog post has been deleted.");
+      swalSuccess("Deleted!", "Product has been deleted.");
     } catch (err) {
-      swalError("Delete Failed", err instanceof Error ? err.message : "Failed to delete blog post");
+      swalError("Delete Failed", err instanceof Error ? err.message : "Failed to delete product");
     } finally {
       setDeleting(false);
     }
   }
 
-  const columns = useMemo<ColumnDef<Blog>[]>(
+  const columns = useMemo<ColumnDef<Product>[]>(
     () => [
       {
         id: "sr_no",
@@ -95,14 +92,14 @@ export default function BlogPage() {
         ),
       },
       {
-        accessorKey: "title",
-        header: "Title",
+        accessorKey: "name",
+        header: "Name",
         cell: ({ getValue }) => (
           <span className="font-medium">{getValue<string>()}</span>
         ),
       },
       {
-        accessorKey: "category",
+        accessorKey: "category_name",
         header: "Category",
         cell: ({ getValue }) => {
           const val = getValue<string>();
@@ -114,30 +111,12 @@ export default function BlogPage() {
         },
       },
       {
-        accessorKey: "published_at",
-        header: "Published At",
+        accessorKey: "lender_name",
+        header: "Lender",
         cell: ({ getValue }) => {
           const val = getValue<string>();
           return val ? (
-            new Date(val).toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          );
-        },
-      },
-      {
-        accessorKey: "excerpt",
-        header: "Excerpt",
-        cell: ({ getValue }) => {
-          const val = getValue<string>();
-          return val ? (
-            <span className="line-clamp-2 text-sm text-muted-foreground max-w-xs block">
-              {val}
-            </span>
+            <span className="text-sm">{val}</span>
           ) : (
             <span className="text-muted-foreground">—</span>
           );
@@ -157,8 +136,26 @@ export default function BlogPage() {
                   : "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500"
               }
             >
-              {active ? "Active" : "Deactive"}
+              {active ? "Active" : "Inactive"}
             </span>
+          );
+        },
+      },
+      {
+        accessorKey: "created_at",
+        header: "Created At",
+        cell: ({ getValue }) => {
+          const val = getValue<string>();
+          return val ? (
+            <span>
+              {new Date(val).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
           );
         },
       },
@@ -170,16 +167,14 @@ export default function BlogPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Blog Management
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create, edit, and publish blog posts.
+          <h3 className="text-lg font-semibold">Products</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage loan and financial products on the platform.
           </p>
         </div>
-        <Button onClick={() => router.push("/blog/add")}>
+        <Button onClick={() => router.push("/products/add")}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Blog
+          Add Product
         </Button>
       </div>
 
@@ -197,8 +192,8 @@ export default function BlogPage() {
         limit={limit}
         isLoading={isLoading}
         onPaginationChange={(p) => setPage(p)}
-        onView={(row) => router.push(`/blog/${row.id}/view`)}
-        onEdit={(row) => router.push(`/blog/${row.id}/edit`)}
+        onView={(row) => router.push(`/products/${row.id}/view`)}
+        onEdit={(row) => router.push(`/products/${row.id}/edit`)}
         onDelete={(row) => setDeleteTarget(row.id)}
         controls={{
           showSearch: true,
@@ -216,20 +211,16 @@ export default function BlogPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Blog Post</AlertDialogTitle>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. The blog post will be permanently removed.
+              This cannot be undone. The product will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
+            <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>

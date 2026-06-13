@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, Lock } from "lucide-react";
+import { swalError } from "@/lib/swal";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +29,9 @@ export default function LoginPage() {
       saveTokens(tokens);
       router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      const msg = err instanceof Error ? err.message : "Login failed. Please try again.";
+      setError(msg);
+      swalError("Login Failed", msg);
     } finally {
       setIsPending(false);
     }
