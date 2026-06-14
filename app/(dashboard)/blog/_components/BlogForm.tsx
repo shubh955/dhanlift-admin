@@ -142,17 +142,33 @@ function colSpan(type: string | undefined): string {
 // ── Validation ─────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\d{10}$/;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/svg+xml", "image/webp"];
+const ALLOWED_IMAGE_EXT = ["jpg", "jpeg", "png", "svg", "webp"];
 
 function validateField(field: CmsField, value: unknown): string | null {
   const t = (field.type ?? "").toLowerCase();
+  const fname = field.field.toLowerCase();
   const str = value == null ? "" : String(value).trim();
-
   if (field.required) {
     if (t === "boolean") return null;
     if (!str) return `${field.label} is required`;
   }
-  if (str && t === "email" && !EMAIL_RE.test(str)) return "Enter a valid email address";
-  if (str && t === "number" && isNaN(Number(str))) return "Enter a valid number";
+  if (!str) return null;
+  if (t === "email" || fname.includes("email")) {
+    if (!EMAIL_RE.test(str)) return "Enter a valid email address";
+  }
+  if (t === "number") {
+    if (isNaN(Number(str))) return "Enter a valid number";
+  }
+  if (fname.includes("mobile") || fname.includes("phone")) {
+    if (!PHONE_RE.test(str)) return "Enter a valid 10-digit mobile number";
+  }
+  if (fname === "rating") {
+    const n = Number(str);
+    if (isNaN(n)) return "Rating must be a number";
+    if (n < 1 || n > 5) return "Rating must be between 1 and 5";
+  }
   return null;
 }
 
@@ -601,12 +617,13 @@ function ImageUploadField({
     if (inputRef.current) inputRef.current.value = "";
     setLocalError(null);
 
-    if (!file.type.startsWith("image/")) {
-      setLocalError("Please select an image file (JPEG, PNG, WebP, GIF…)");
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !ALLOWED_IMAGE_EXT.includes(ext)) {
+      swalError("Invalid File Type", "Only JPG, JPEG, PNG, and SVG images are allowed.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setLocalError("Image must be under 5 MB");
+      swalError("File Too Large", "Image size must be under 5 MB.");
       return;
     }
 
@@ -626,7 +643,7 @@ function ImageUploadField({
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (!res.ok) throw new Error(`Upload failed (HTTP ${res.status})`);
+      if (!res.ok) throw new Error(res.status === 400 ? "Only JPG, JPEG, PNG, SVG, and WebP images are allowed." : `Upload failed (HTTP ${res.status})`);
 
       const data = await res.json();
       const url: string = data.url ?? data.data?.url ?? "";
@@ -693,7 +710,7 @@ function ImageUploadField({
             ref={inputRef}
             id={`img-${fieldName}`}
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.svg,.webp"
             className="hidden"
             onChange={handleFileChange}
             disabled={uploading}
