@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -29,11 +30,15 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-sidebar">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-          D
-        </div>
-        <span className="text-lg font-semibold tracking-tight">Dhanlift</span>
+      <div className="flex h-16 items-center border-b px-6">
+        <Image
+          src="/dhanlift-admin-logo.png"
+          alt="Dhanlift"
+          width={160}
+          height={40}
+          className="object-contain"
+          priority
+        />
       </div>
 
       {/* Nav */}

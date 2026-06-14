@@ -40,6 +40,7 @@ export function CategoryList() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,6 +57,34 @@ export function CategoryList() {
       .finally(() => setIsLoading(false));
     return () => controller.abort();
   }, [page, refreshKey]);
+
+  async function handleToggle(row: Category) {
+    if (togglingId != null) return;
+    setTogglingId(row.id);
+    const newStatus = row.is_active ? 0 : 1;
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API}/v1/admin/cms/update-status/category/${row.id}`, {
+        method: "PATCH",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Status update failed");
+      setRefreshKey((k) => k + 1);
+      swalSuccess(
+        newStatus === 1 ? "Activated!" : "Deactivated!",
+        `Category has been ${newStatus === 1 ? "activated" : "deactivated"}.`
+      );
+    } catch (err) {
+      swalError("Update Failed", err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   async function handleDelete() {
     if (deleteTarget == null) return;
@@ -169,6 +198,8 @@ export function CategoryList() {
         onView={(row) => router.push(`/settings/category/${row.id}/view`)}
         onEdit={(row) => router.push(`/settings/category/${row.id}/edit`)}
         onDelete={(row) => setDeleteTarget(row.id)}
+        onToggle={handleToggle}
+        isToggleActive={(row) => row.is_active}
         controls={{
           showSearch: true,
           showExport: true,
@@ -176,6 +207,7 @@ export function CategoryList() {
           showViewAction: true,
           showEditAction: true,
           showDeleteAction: true,
+          showToggleAction: true,
         }}
       />
 

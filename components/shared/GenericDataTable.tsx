@@ -35,6 +35,7 @@ export interface TableControls {
   showViewAction?: boolean;
   showEditAction?: boolean;
   showDeleteAction?: boolean;
+  showToggleAction?: boolean;
 }
 
 interface GenericDataTableProps<T extends object> {
@@ -48,6 +49,8 @@ interface GenericDataTableProps<T extends object> {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onToggle?: (row: T) => void;
+  isToggleActive?: (row: T) => boolean;
   isLoading?: boolean;
 }
 
@@ -62,6 +65,8 @@ export function GenericDataTable<T extends object>({
   onView,
   onEdit,
   onDelete,
+  onToggle,
+  isToggleActive,
   isLoading = false,
 }: GenericDataTableProps<T>) {
   const {
@@ -71,11 +76,12 @@ export function GenericDataTable<T extends object>({
     showViewAction = false,
     showEditAction = false,
     showDeleteAction = false,
+    showToggleAction = false,
   } = controls;
 
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const hasActions = showViewAction || showEditAction || showDeleteAction;
+  const hasActions = showViewAction || showEditAction || showDeleteAction || showToggleAction;
 
   const allColumns = useMemo<ColumnDef<T>[]>(() => {
     if (!hasActions) return columns;
@@ -84,43 +90,61 @@ export function GenericDataTable<T extends object>({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            {showViewAction && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => onView?.(row.original)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            )}
-            {showEditAction && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => onEdit?.(row.original)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
-            {showDeleteAction && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() => onDelete?.(row.original)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const active = isToggleActive?.(row.original) ?? false;
+          return (
+            <div className="flex items-center gap-1">
+              {showViewAction && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => onView?.(row.original)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              )}
+              {showEditAction && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => onEdit?.(row.original)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {showDeleteAction && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => onDelete?.(row.original)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              {showToggleAction && (
+                <button
+                  title={active ? "Click to Deactivate" : "Click to Activate"}
+                  onClick={() => onToggle?.(row.original)}
+                  className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                    active ? "bg-green-500" : "bg-red-500"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                      active ? "translate-x-[18px]" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              )}
+            </div>
+          );
+        },
       },
     ];
-  }, [columns, hasActions, showViewAction, showEditAction, showDeleteAction, onView, onEdit, onDelete]);
+  }, [columns, hasActions, showViewAction, showEditAction, showDeleteAction, showToggleAction, onView, onEdit, onDelete, onToggle, isToggleActive]);
 
   const table = useReactTable({
     data,

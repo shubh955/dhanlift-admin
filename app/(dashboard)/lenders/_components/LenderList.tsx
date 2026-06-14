@@ -41,6 +41,7 @@ export function LenderList() {
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,6 +58,34 @@ export function LenderList() {
       .finally(() => setIsLoading(false));
     return () => controller.abort();
   }, [page, refreshKey]);
+
+  async function handleToggle(row: Lender) {
+    if (togglingId != null) return;
+    setTogglingId(row.id);
+    const newStatus = row.is_active ? 0 : 1;
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API}/v1/admin/cms/update-status/lender/${row.id}`, {
+        method: "PATCH",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Status update failed");
+      setRefreshKey((k) => k + 1);
+      swalSuccess(
+        newStatus === 1 ? "Activated!" : "Deactivated!",
+        `Lender has been ${newStatus === 1 ? "activated" : "deactivated"}.`
+      );
+    } catch (err) {
+      swalError("Update Failed", err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   async function handleDelete() {
     if (deleteTarget == null) return;
@@ -98,14 +127,21 @@ export function LenderList() {
         ),
       },
       {
-        accessorKey: "description",
-        header: "Description",
+        accessorKey: "is_active",
+        header: "Status",
+        size: 90,
         cell: ({ getValue }) => {
-          const val = getValue<string>();
-          return val ? (
-            <span className="text-muted-foreground text-sm line-clamp-2">{val}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
+          const active = getValue<boolean>();
+          return (
+            <span
+              className={
+                active
+                  ? "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-700"
+                  : "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500"
+              }
+            >
+              {active ? "Active" : "Inactive"}
+            </span>
           );
         },
       },
@@ -163,6 +199,8 @@ export function LenderList() {
         onView={(row) => router.push(`/lenders/${row.id}/view`)}
         onEdit={(row) => router.push(`/lenders/${row.id}/edit`)}
         onDelete={(row) => setDeleteTarget(row.id)}
+        onToggle={handleToggle}
+        isToggleActive={(row) => row.is_active}
         controls={{
           showSearch: true,
           showExport: true,
@@ -170,6 +208,7 @@ export function LenderList() {
           showViewAction: true,
           showEditAction: true,
           showDeleteAction: true,
+          showToggleAction: true,
         }}
       />
 
